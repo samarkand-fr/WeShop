@@ -7,15 +7,14 @@ import { initializeApp } from "firebase/app";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyD9pbaaDCOCFvffuc6xaDp1C3XlITfuFhc",
-  authDomain: "e-commerce-ace4d.firebaseapp.com",
-  databaseURL: "https://e-commerce-ace4d-default-rtdb.firebaseio.com",
-  projectId: "e-commerce-ace4d",
-  storageBucket: "e-commerce-ace4d.appspot.com",
-  messagingSenderId: "926676822205",
-  appId: "1:926676822205:web:16ad2429e849e208b0efd4"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  databaseURL: process.env.REACT_APP_FIREBASE_DATABASE_URL,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID,
 };
-
 // Initialize Firebase
 const firebaseApp = initializeApp(firebaseConfig);
 
