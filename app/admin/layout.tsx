@@ -1,18 +1,20 @@
-import AdminNav from "../components/admin/AdminNav"
+import AdminNav from "../components/admin/AdminNav";
 
+// Define the metadata correctly
 export const metadata = {
-    title: 'WeShop Admin',
-    description : 'WeShop Admin Dashboard'
-}
-// nested layout in dashboard layout change selon children
-const Adminlayout = ({children}:{children:React.ReactNode}) => {
-  return (
-      <div>
-          <AdminNav />
-          {/* this will invoke page admin  and its children  */}
-          {children}
-   </div>
-  )
-}
+  title: 'WeShop Admin',
+  description: 'WeShop Admin Dashboard'
+};
 
-export default Adminlayout
+// Define the Admin layout component
+const AdminLayout = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <div>
+      <AdminNav />
+      {/* Render the children */}
+      {children}
+    </div>
+  );
+};
+
+export default AdminLayout;
