@@ -9,6 +9,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
   if (!currentUser || currentUser.role !== 'ADMIN') {
     return NextResponse.error();
   }
+
   // Extract the product ID from the request parameters
   const productId = params.id;
 

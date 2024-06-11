@@ -55,7 +55,7 @@ const AddProductForm = () => {
       setImages(null);
       setIsProductCreated(false);
     }
-  }, [isProductCreated]);
+  }, [isProductCreated, reset]);
 
   // submit the formproduct
   const onSubmit: SubmitHandler<FieldValues> = async (data) => {

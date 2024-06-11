@@ -5,8 +5,6 @@ import Navbar from './components/nav/navbar'
 import Footer from './components/footer/Footer'
 import CartProvider from '@/providers/CartProvider'
 import { Toaster } from 'react-hot-toast'
-// import { GetCurrentUser } from '@/actions/getCurrentUser'
-
 
 // use font poppins
 const poppins = Poppins({ subsets: ['latin'],weight:['400','700'] })
@@ -21,10 +19,6 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode
   }) {
-  
-  // test to see if we can get user code below 
-  // const currentUser = await GetCurrentUser()
-  // console.log('user<<<<<< serverside!', currentUser)
   
   return (
     <html lang="en">

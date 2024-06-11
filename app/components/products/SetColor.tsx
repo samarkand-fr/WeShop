@@ -1,18 +1,22 @@
+// Importing necessary dependencies and types.
 "use client";
-
 import { SetColorProps } from "@/types";
 import { border } from "@mui/system";
 
+// SetColor component represents a section for selecting colors.
 const SetColor: React.FC<SetColorProps> = ({
   images,
   cartProduct,
   handleColorSelect,
 }) => {
   return (
+    // Container for color selection section.
     <div className="flex gap-4 items-center">
+      {/* Label for color selection */}
       <span className="font-semibold">COLOR :</span>
-      {/* display different colors available */}
+      {/* Container for displaying different colors available */}
       <div className="flex gap-1">
+        {/* Mapping through color images for selection */}
         {images.map((image) => {
           return (
             <div
@@ -27,6 +31,7 @@ const SetColor: React.FC<SetColorProps> = ({
                      }
                      `}
             >
+              {/* Inner container displaying the color */}
               <div
                 style={{ background: image.colorCode }}
                 className="h-5 w-5 rounded-full border-[1.2] border-slate-300 cursor-pointer"

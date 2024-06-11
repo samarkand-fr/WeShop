@@ -1,6 +1,6 @@
 import AdminNav from "../components/admin/AdminNav"
 
-export const metaData = {
+export const metadata = {
     title: 'WeShop Admin',
     description : 'WeShop Admin Dashboard'
 }

@@ -9,10 +9,7 @@ export default async function getProducts(params:IProductsParams) {
     try {
         // get products from our params 
         const { category, searchTerm } = params
-        let searchSrting = searchTerm
-        if (!searchTerm) {
-            searchSrting = ''
-        }
+        let searchSrting = searchTerm || ''
         let query:any = {}
         if (category) {
             query.category = category
@@ -30,7 +27,15 @@ export default async function getProducts(params:IProductsParams) {
                         description: {
                             contains: searchSrting,
                             mode : 'insensitive'
-                        }
+                        },
+                        category: {
+                            contains: searchSrting,
+                            mode:'insensitive'
+                        },
+                        brand: {
+                            contains: searchSrting,
+                            mode:'insensitive'
+                        },
                     }
                 ]
             },
@@ -48,7 +53,9 @@ export default async function getProducts(params:IProductsParams) {
 
 return products
 
-    } catch (error:any) {
-        throw new Error(error)
-    }
+} catch (error) {
+    console.error('Error in getProducts:', error);
+    throw new Error('An error occurred while fetching products.');
+}
+
 }

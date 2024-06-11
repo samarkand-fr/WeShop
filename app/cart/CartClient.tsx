@@ -1,3 +1,4 @@
+// Import necessary modules and components
 "use client";
 import { useCart } from "@/hooks/useCart";
 import Link from "next/link";
@@ -9,21 +10,25 @@ import { formatPrice } from "../../utils/formatPrice";
 import { SafeUser } from "@/types";
 import { useRouter } from "next/navigation";
 
+// Define the CartClientProps interface
 interface CartClientProps {
   currentUser: SafeUser | null | undefined;
 }
+
+// CartClient component to display the shopping cart
 const CartClient: React.FC<CartClientProps> = ({ currentUser }) => {
-  // use hook destructure
+  // Destructure values from the useCart hook
   const { cartProducts, handleClearCart, cartTotalAmount } = useCart();
   const router = useRouter();
 
+  // If the cart is empty, display a message
   if (!cartProducts || cartProducts.length === 0) {
     return (
-      <div className="flex flex-col items-center ">
-        <div className="text-2Xl">Your Cart is Empty</div>
+      <div className="flex flex-col items-center">
+        <div className="text-2xl">Your Cart is Empty</div>
         <div>
           <Link
-            href={"./"}
+            href={"/"}
             className="text-slate-500 flex items-center gap-1 mt-2"
           >
             <MdArrowBack />
@@ -41,17 +46,15 @@ const CartClient: React.FC<CartClientProps> = ({ currentUser }) => {
       </div>
       <div className="grid grid-cols-5 text-xs gap-4 pb-2 items-center mt-8">
         <div className="col-span-2 justify-self-start">Product</div>
-        <div className=" justify-self-center">Price</div>
-        <div className=" justify-self-center">Quantity</div>
-        <div className=" justify-self-end">Total</div>
+        <div className="justify-self-center">Price</div>
+        <div className="justify-self-center">Quantity</div>
+        <div className="justify-self-end">Total</div>
       </div>
       <div>
-        {/* map through products to place them in the cart  */}
+        {/* Map through products to place them in the cart */}
         {cartProducts &&
           cartProducts.map((item) => {
-            //    return <div key={item.id}>
-            //          {item.name}
-            //          </div>
+            // Return the ItemContent component for each cart item
             return <ItemContent key={item.id} item={item} />;
           })}
         <div className="border-t-[1.5px] border-slate-200 py-4 flex justify-between gap-4">
@@ -71,7 +74,7 @@ const CartClient: React.FC<CartClientProps> = ({ currentUser }) => {
               <span>{formatPrice(cartTotalAmount)}</span>
             </div>
 
-            <p className=" text-slate-500">
+            <p className="text-slate-500">
               Taxes and shipping calculated at checkout
             </p>
             <Button
@@ -87,7 +90,7 @@ const CartClient: React.FC<CartClientProps> = ({ currentUser }) => {
               className="text-slate-500 flex items-center gap-1 mt-2"
             >
               <MdArrowBack />
-              <span>continue Shopping</span>
+              <span>Continue Shopping</span>
             </Link>
           </div>
         </div>
@@ -96,4 +99,5 @@ const CartClient: React.FC<CartClientProps> = ({ currentUser }) => {
   );
 };
 
+// Export the CartClient component
 export default CartClient;

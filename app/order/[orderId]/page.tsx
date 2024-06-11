@@ -1,27 +1,33 @@
+// Import necessary modules and components
 import getOrderById from "@/actions/getOrderById";
 import Container from "@/app/components/Container";
 import OrderDetails from "./OrderDetails";
 import NullData from "@/app/components/products/NullData";
 
-// this file was used just to figure one order fo dev purposes to be easy to managed
-// import { order } from "@/app/utils/order";
-// here the whole orders file 2nd step
-
+// Define the interface for URL parameters
 interface IParams {
   orderId?: string;
 }
-// params=access to order id in url
+
+// Order component that fetches and displays order details
 const Order = async ({ params }: { params: IParams }) => {
+  // Fetch order details based on the orderId from URL parameters
   const order = await getOrderById(params);
 
-  if (!order) return <NullData title="No Order"></NullData>;
+  // If no order is found, render NullData component with a message
+  if (!order) {
+    return <NullData title="No Order" />;
+  }
+
+  // Render the Container component with OrderDetails inside
   return (
-    <div className="p-8">
-      <Container>
+    <Container>
+      <div className="p-8">
         <OrderDetails order={order} />
-      </Container>
-    </div>
+      </div>
+    </Container>
   );
 };
 
+// Export the Order component
 export default Order;

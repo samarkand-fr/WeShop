@@ -1,26 +1,32 @@
-
+// Import necessary modules and dependencies
 import getCurrentUser from '@/actions/getCurrentUser';
-import  prisma  from '@/libs/prismadb';
+import prisma from '@/libs/prismadb';
 import { NextResponse } from 'next/server';
 
-// may be here post***************************
-// rest a faire call this api to add product 
-export async function PUT (request :Request) {
-    const currentUser = await getCurrentUser()
-    // check if not user exist or not admin 
-    if (!currentUser) return NextResponse.error()
-    if (currentUser.role !== 'ADMIN') {
-        return NextResponse.error()
+// Handle the PUT request for updating the deliveryStatus of an order
+export async function PUT(request: Request) {
+    // Get the current user using the getCurrentUser function
+    const currentUser = await getCurrentUser();
+
+    // Check if the user does not exist or is not an admin
+    if (!currentUser || currentUser.role !== 'ADMIN') {
+        return NextResponse.error();
     }
-    const body = await request.json()
-    const { id, deliveryStatus } = body
-    
+
+    // Parse the request body
+    const body = await request.json();
+    const { id, deliveryStatus } = body;
+
+    // Update the deliveryStatus of the order in the database
     const order = await prisma.order.update({
         where: {
-            id:id,
+            id: id,
         },
-        data: {deliveryStatus},
-    })
-    return NextResponse.json(order)
-}
+        data: {
+            deliveryStatus,
+        },
+    });
 
+    // Return the updated order as JSON response
+    return NextResponse.json(order);
+}

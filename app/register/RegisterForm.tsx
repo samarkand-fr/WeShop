@@ -1,91 +1,90 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import Heading from "../components/Heading";
-import Input from "../components/inputs/Input";
-import { FieldValues, useForm, SubmitHandler } from "react-hook-form";
-import Button from "../components/Button";
-import Link from "next/link";
-import { AiOutlineGoogle } from "react-icons/ai";
+// Import necessary dependencies and components
+import React, { useEffect, useState } from "react";
 import axios from "axios";
-import toast from "react-hot-toast";
+import { useForm, SubmitHandler } from "react-hook-form";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
+import { AiOutlineGoogle } from "react-icons/ai";
+import Heading from "../components/Heading";
+import Input from "../components/inputs/Input";
+import Button from "../components/Button";
+import Link from "next/link";
 import { SafeUser } from "@/types";
 
+// Define the props interface
 interface RegisterFormProps {
-  currentUser : SafeUser  | null | undefined
+  currentUser: SafeUser | null | undefined;
 }
 
-const RegisterForm:React.FC<RegisterFormProps> = ({currentUser}) => {
+// RegisterForm component
+const RegisterForm: React.FC<RegisterFormProps> = ({ currentUser }) => {
+  // State to handle loading
   const [isLoading, setIsLoading] = useState(false);
+
+  // React Hook Form initialization
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<FieldValues>({
-    defaultValues: {
-      name: "",
-      email: "",
-      password: "",
-    },
-  });
+  } = useForm();
 
+  // Next.js router
   const router = useRouter();
 
+  // Effect to redirect if user is already logged in
   useEffect(() => {
     if (currentUser) {
-      router.push("/cart")
-      router.refresh()
-
+      router.push("/cart");
     }
-  }, []);
-  
-  // use the data comming from api/route
-  const onSubmit: SubmitHandler<FieldValues> = (data) => {
+  }, [currentUser, router]);
+
+  // Form submission handler
+  const onSubmit: SubmitHandler<any> = async (data) => {
     setIsLoading(true);
-    console.log(data);
-    // data will be our body
-    axios
-      .post('/api/register', data)
-      .then(() => {
-        toast.success("account created");
-        signIn("credentials", {
-          email: data.email,
-          password: data.password,
-          redirect: false,
-        })
-          .then((response) => {
-            if (response?.ok) {
-              router.push("/cart");
-              router.refresh();
-              toast.success("logged in");
-            }
-            if (response?.error) {
-              toast.error("invalid email or password");
-            }
-          })
-      })
-      .catch(() => toast.error("something went  wrong during sign-in"))
-      .finally(() =>{setIsLoading(false)});
+
+    try {
+      // Make a POST request to register user
+      await axios.post("/api/register", data);
+
+      // Sign in the user after successful registration
+      const signInResponse = await signIn("credentials", {
+        email: data.email,
+        password: data.password,
+        redirect: false,
+      });
+
+      // Check the response and redirect if successful
+      if (signInResponse?.ok) {
+        router.push("/cart");
+        toast.success("Logged in");
+      } else {
+        toast.error("Invalid email or password");
+      }
+    } catch (error) {
+      toast.error("Something went wrong during registration");
+    } finally {
+      setIsLoading(false);
+    }
   };
-  if (currentUser) {
-    return <p className="text-center">Logged In, Redirecting ....</p>
-  }
+
+  // Render the registration form
   return (
     <>
       <Heading title="Sign up for Weshop" />
-      {/* btn sssigne up google */}
+      {/* Button to sign up with Google */}
       <Button
         outline
-        label="Continue with google"
+        label="Continue with Google"
         icon={AiOutlineGoogle}
-        onClick={()=>{signIn('google')}}
+        onClick={() => signIn('google')}
       />
       <hr className="bg-slate-300 w-full h-px" />
+
+      {/* Input fields for name, email, and password */}
       <Input
         id="name"
-        label="name"
+        label="Name"
         disabled={isLoading}
         register={register}
         errors={errors}
@@ -93,7 +92,7 @@ const RegisterForm:React.FC<RegisterFormProps> = ({currentUser}) => {
       />
       <Input
         id="email"
-        label="email"
+        label="Email"
         disabled={isLoading}
         register={register}
         errors={errors}
@@ -101,18 +100,21 @@ const RegisterForm:React.FC<RegisterFormProps> = ({currentUser}) => {
       />
       <Input
         id="password"
-        label="password"
+        label="Password"
         disabled={isLoading}
         register={register}
         errors={errors}
         required
         type="password"
       />
-      {/* label dynamically the btn */}
+
+      {/* Button to submit the form */}
       <Button
         label={isLoading ? "Loading" : "Sign Up"}
         onClick={handleSubmit(onSubmit)}
       />
+
+      {/* Link to login page if user already has an account */}
       <p className="text-sm ">
         {" "}
         Already have an account?

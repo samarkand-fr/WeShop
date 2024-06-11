@@ -1,3 +1,4 @@
+"use client"
 import { CartProductType } from "@/types";
 import {
   createContext,
@@ -8,7 +9,7 @@ import {
 } from "react";
 import { toast } from "react-hot-toast";
 
-
+// Define the type for the CartContext
 type CartContextType = {
   cartTotalQty: number;
   cartTotalAmount: number;
@@ -22,29 +23,34 @@ type CartContextType = {
   handleSetPaymentIntent: (val: string | null) => void;
 };
 
+// Create the CartContext
 export const CartContext = createContext<CartContextType | null>(null);
+
 interface Props {
   [propName: string]: any;
 }
+
+// CartContextProvider component
 export const CartContextProvider = (props: Props) => {
   const [cartTotalQty, setCartTotalQty] = useState(0);
   const [cartProducts, setCartProducts] = useState<CartProductType[] | null>(
     null
   );
   const [cartTotalAmount, setCartTotalAmount] = useState(0);
-  const [paymentIntent ,setPaymentIntent]= useState<string | null>(null)
+  const [paymentIntent, setPaymentIntent] = useState<string | null>(null);
 
+  // Load cart data from localStorage on component mount
   useEffect(() => {
     const cartItems: any = localStorage.getItem("eShopCartItems");
     const cProducts: CartProductType[] | null = JSON.parse(cartItems);
     const eShopPaymentIntent: any = localStorage.getItem('eShopPaymentIntent');
-    const paymentIntent: string | null = JSON.parse(eShopPaymentIntent)
-    
+    const paymentIntent: string | null = JSON.parse(eShopPaymentIntent);
+
     setCartProducts(cProducts);
     setPaymentIntent(paymentIntent);
-
   }, []);
 
+  // Update cart totals whenever cartProducts change
   useEffect(() => {
     const getTotals = () => {
       if (cartProducts) {
@@ -67,6 +73,7 @@ export const CartContextProvider = (props: Props) => {
     getTotals();
   }, [cartProducts]);
 
+  // Add a product to the cart
   const handleAddProductToCart = useCallback((product: CartProductType) => {
     setCartProducts((prev) => {
       let updatedCart;
@@ -75,13 +82,13 @@ export const CartContextProvider = (props: Props) => {
       } else {
         updatedCart = [product];
       }
-      //  toast.success('product added to cart')
       localStorage.setItem("eShopCartItems", JSON.stringify(updatedCart));
       return updatedCart;
     });
-    toast.success("product added to cart");
+    toast.success("Product added to cart");
   }, []);
 
+  // Remove a product from the cart
   const handleRemoveProductFromCart = useCallback(
     (product: CartProductType) => {
       if (cartProducts) {
@@ -89,7 +96,7 @@ export const CartContextProvider = (props: Props) => {
           return item.id !== product.id;
         });
         setCartProducts(filteredProducts);
-        toast.success("product removed from cart");
+        toast.success("Product removed from cart");
         localStorage.setItem(
           "eShopCartItems",
           JSON.stringify(filteredProducts)
@@ -99,12 +106,12 @@ export const CartContextProvider = (props: Props) => {
     [cartProducts]
   );
 
+  // Increase quantity of a product in the cart
   const handleQtyIncrease = useCallback(
     (product: CartProductType) => {
-      // use variable to update state and index to find precise product to update
       let updatedCart;
       if (product.quantity === 99) {
-        return toast.error("maximum quantity reached");
+        return toast.error("Maximum quantity reached");
       }
       if (cartProducts) {
         updatedCart = [...cartProducts];
@@ -112,7 +119,7 @@ export const CartContextProvider = (props: Props) => {
           (item) => item.id === product.id
         );
         if (existingIndex > -1) {
-          updatedCart[existingIndex].quantity =
+          updatedCart[existingIndex].quantity +=
             updatedCart[existingIndex].quantity + 1;
         }
         setCartProducts(updatedCart);
@@ -122,12 +129,12 @@ export const CartContextProvider = (props: Props) => {
     [cartProducts]
   );
 
+  // Decrease quantity of a product in the cart
   const handleQtyDecrease = useCallback(
     (product: CartProductType) => {
-      // use variable to update state and index to find precise product to update
       let updatedCart;
       if (product.quantity === 1) {
-        return toast.error("minimum reached");
+        return toast.error("Minimum quantity reached");
       }
       if (cartProducts) {
         updatedCart = [...cartProducts];
@@ -135,7 +142,7 @@ export const CartContextProvider = (props: Props) => {
           (item) => item.id === product.id
         );
         if (existingIndex > -1) {
-          updatedCart[existingIndex].quantity =
+          updatedCart[existingIndex].quantity -=
             updatedCart[existingIndex].quantity - 1;
         }
         setCartProducts(updatedCart);
@@ -145,20 +152,20 @@ export const CartContextProvider = (props: Props) => {
     [cartProducts]
   );
 
+  // Clear the entire cart
   const handleClearCart = useCallback(() => {
     setCartProducts(null);
     setCartTotalQty(0);
-    // we can use removeitem also
     localStorage.setItem("eShopCartItems", JSON.stringify(null));
-  }, [cartProducts]);
+  }, []);
 
-  //  add paymentIntent to localstorage
-  const handleSetPaymentIntent = useCallback((val:string | null) => {
-    setPaymentIntent(val)
-    localStorage.setItem('eShopPaymentIntent',JSON.stringify(val))
-  }, [paymentIntent])
-  
+  // Set paymentIntent and store it in localStorage
+  const handleSetPaymentIntent = useCallback((val: string | null) => {
+    setPaymentIntent(val);
+    localStorage.setItem('eShopPaymentIntent', JSON.stringify(val));
+  }, []);
 
+  // Context value
   const value = {
     cartTotalQty,
     cartTotalAmount,
@@ -175,10 +182,11 @@ export const CartContextProvider = (props: Props) => {
   return <CartContext.Provider value={value} {...props} />;
 };
 
+// Custom hook to use the CartContext
 export const useCart = () => {
   const context = useContext(CartContext);
   if (context === null) {
-    throw new Error("usecart must be used within a carte context provider");
+    throw new Error("useCart must be used within a CartContextProvider");
   }
   return context;
 };
