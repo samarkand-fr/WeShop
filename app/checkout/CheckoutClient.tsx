@@ -1,7 +1,7 @@
 "use client";
 
 import { useCart } from "@/hooks/useCart";
-import { Elements, StripeElementsOptions } from "@stripe/react-stripe-js";
+import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -138,11 +138,11 @@ const CheckoutClient = () => {
     return () => controller.abort();
   }, [cartProducts, paymentIntent, handleSetPaymentIntent, router, retryKey]);
 
-  const options: StripeElementsOptions = {
+  const options = {
     clientSecret,
     appearance: {
-      theme: "stripe",
-      labels: "floating",
+      theme: "stripe" as const,
+      labels: "floating" as const,
     },
   };
 
