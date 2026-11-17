@@ -1,15 +1,16 @@
-"use client"
+"use client";
+
 import { CartProductType } from "@/types";
 import {
   createContext,
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import { toast } from "react-hot-toast";
 
-// Define the type for the CartContext
 type CartContextType = {
   cartTotalQty: number;
   cartTotalAmount: number;
@@ -23,150 +24,133 @@ type CartContextType = {
   handleSetPaymentIntent: (val: string | null) => void;
 };
 
-// Create the CartContext
 export const CartContext = createContext<CartContextType | null>(null);
 
 interface Props {
-  [propName: string]: any;
+  children: React.ReactNode;
 }
 
-// CartContextProvider component
-export const CartContextProvider = (props: Props) => {
-  const [cartTotalQty, setCartTotalQty] = useState(0);
+const isSameCartItem = (first: CartProductType, second: CartProductType) =>
+  first.id === second.id &&
+  first.selectedImg?.color === second.selectedImg?.color;
+
+export const CartContextProvider = ({ children }: Props) => {
   const [cartProducts, setCartProducts] = useState<CartProductType[] | null>(
     null
   );
-  const [cartTotalAmount, setCartTotalAmount] = useState(0);
   const [paymentIntent, setPaymentIntent] = useState<string | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
 
-  // Load cart data from localStorage on component mount
+  // Read browser storage only after mounting, and recover gracefully if it is invalid.
   useEffect(() => {
-    const cartItems: any = localStorage.getItem("eShopCartItems");
-    const cProducts: CartProductType[] | null = JSON.parse(cartItems);
-    const eShopPaymentIntent: any = localStorage.getItem('eShopPaymentIntent');
-    const paymentIntent: string | null = JSON.parse(eShopPaymentIntent);
+    try {
+      const storedCart = localStorage.getItem("eShopCartItems");
+      const parsedCart = storedCart ? JSON.parse(storedCart) : null;
+      setCartProducts(Array.isArray(parsedCart) ? parsedCart : null);
 
-    setCartProducts(cProducts);
-    setPaymentIntent(paymentIntent);
+      const storedPaymentIntent = localStorage.getItem("eShopPaymentIntent");
+      setPaymentIntent(
+        storedPaymentIntent ? JSON.parse(storedPaymentIntent) : null
+      );
+    } catch {
+      setCartProducts(null);
+      setPaymentIntent(null);
+    } finally {
+      setIsHydrated(true);
+    }
   }, []);
 
-  // Update cart totals whenever cartProducts change
+  // Keep storage in sync after the initial read, without overwriting it during hydration.
   useEffect(() => {
-    const getTotals = () => {
-      if (cartProducts) {
-        const { total, qty } = cartProducts?.reduce(
-          (acc, item) => {
-            const itemTotal = item.price * item.quantity;
-            acc.total += itemTotal;
-            acc.qty += item.quantity;
-            return acc;
-          },
-          {
-            total: 0,
-            qty: 0,
-          }
-        );
-        setCartTotalQty(qty);
-        setCartTotalAmount(total);
-      }
-    };
-    getTotals();
-  }, [cartProducts]);
+    if (!isHydrated) return;
+    localStorage.setItem("eShopCartItems", JSON.stringify(cartProducts));
+    localStorage.setItem("eShopPaymentIntent", JSON.stringify(paymentIntent));
+  }, [cartProducts, paymentIntent, isHydrated]);
 
-  // Add a product to the cart
+  const cartTotalQty = useMemo(
+    () => (cartProducts ?? []).reduce((total, item) => total + item.quantity, 0),
+    [cartProducts]
+  );
+
+  const cartTotalAmount = useMemo(
+    () =>
+      (cartProducts ?? []).reduce(
+        (total, item) => total + item.price * item.quantity,
+        0
+      ),
+    [cartProducts]
+  );
+
   const handleAddProductToCart = useCallback((product: CartProductType) => {
-    setCartProducts((prev) => {
-      let updatedCart;
-      if (prev) {
-        updatedCart = [...prev, product];
-      } else {
-        updatedCart = [product];
-      }
-      localStorage.setItem("eShopCartItems", JSON.stringify(updatedCart));
-      return updatedCart;
+    setCartProducts((current) => {
+      const items = current ?? [];
+      const existingItem = items.find((item) => isSameCartItem(item, product));
+
+      if (!existingItem) return [...items, product];
+
+      return items.map((item) =>
+        isSameCartItem(item, product)
+          ? { ...item, quantity: Math.min(99, item.quantity + product.quantity) }
+          : item
+      );
     });
     toast.success("Product added to cart");
   }, []);
 
-  // Remove a product from the cart
   const handleRemoveProductFromCart = useCallback(
     (product: CartProductType) => {
-      if (cartProducts) {
-        const filteredProducts = cartProducts.filter((item) => {
-          return item.id !== product.id;
-        });
-        setCartProducts(filteredProducts);
-        toast.success("Product removed from cart");
-        localStorage.setItem(
-          "eShopCartItems",
-          JSON.stringify(filteredProducts)
+      setCartProducts((current) => {
+        const updated = (current ?? []).filter(
+          (item) => !isSameCartItem(item, product)
         );
-      }
+        return updated.length ? updated : null;
+      });
+      toast.success("Product removed from cart");
     },
-    [cartProducts]
+    []
   );
 
-  // Increase quantity of a product in the cart
-  const handleQtyIncrease = useCallback(
-    (product: CartProductType) => {
-      let updatedCart;
-      if (product.quantity === 99) {
-        return toast.error("Maximum quantity reached");
+  const handleQtyIncrease = useCallback((product: CartProductType) => {
+    setCartProducts((current) => {
+      const items = current ?? [];
+      const existingItem = items.find((item) => isSameCartItem(item, product));
+      if (!existingItem || existingItem.quantity >= 99) {
+        toast.error("Maximum quantity reached");
+        return current;
       }
-      if (cartProducts) {
-        updatedCart = [...cartProducts];
-        const existingIndex = cartProducts.findIndex(
-          (item) => item.id === product.id
-        );
-        if (existingIndex > -1) {
-          updatedCart[existingIndex].quantity +=
-            updatedCart[existingIndex].quantity + 1;
-        }
-        setCartProducts(updatedCart);
-        localStorage.setItem("eShopCartItems", JSON.stringify(updatedCart));
-      }
-    },
-    [cartProducts]
-  );
+      return items.map((item) =>
+        isSameCartItem(item, product)
+          ? { ...item, quantity: item.quantity + 1 }
+          : item
+      );
+    });
+  }, []);
 
-  // Decrease quantity of a product in the cart
-  const handleQtyDecrease = useCallback(
-    (product: CartProductType) => {
-      let updatedCart;
-      if (product.quantity === 1) {
-        return toast.error("Minimum quantity reached");
+  const handleQtyDecrease = useCallback((product: CartProductType) => {
+    setCartProducts((current) => {
+      const items = current ?? [];
+      const existingItem = items.find((item) => isSameCartItem(item, product));
+      if (!existingItem || existingItem.quantity <= 1) {
+        toast.error("Minimum quantity reached");
+        return current;
       }
-      if (cartProducts) {
-        updatedCart = [...cartProducts];
-        const existingIndex = cartProducts.findIndex(
-          (item) => item.id === product.id
-        );
-        if (existingIndex > -1) {
-          updatedCart[existingIndex].quantity -=
-            updatedCart[existingIndex].quantity - 1;
-        }
-        setCartProducts(updatedCart);
-        localStorage.setItem("eShopCartItems", JSON.stringify(updatedCart));
-      }
-    },
-    [cartProducts]
-  );
+      return items.map((item) =>
+        isSameCartItem(item, product)
+          ? { ...item, quantity: item.quantity - 1 }
+          : item
+      );
+    });
+  }, []);
 
-  // Clear the entire cart
   const handleClearCart = useCallback(() => {
     setCartProducts(null);
-    setCartTotalQty(0);
-    localStorage.setItem("eShopCartItems", JSON.stringify(null));
   }, []);
 
-  // Set paymentIntent and store it in localStorage
-  const handleSetPaymentIntent = useCallback((val: string | null) => {
-    setPaymentIntent(val);
-    localStorage.setItem('eShopPaymentIntent', JSON.stringify(val));
+  const handleSetPaymentIntent = useCallback((value: string | null) => {
+    setPaymentIntent(value);
   }, []);
 
-  // Context value
-  const value = {
+  const value: CartContextType = {
     cartTotalQty,
     cartTotalAmount,
     cartProducts,
@@ -179,13 +163,12 @@ export const CartContextProvider = (props: Props) => {
     handleSetPaymentIntent,
   };
 
-  return <CartContext.Provider value={value} {...props} />;
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 };
 
-// Custom hook to use the CartContext
 export const useCart = () => {
   const context = useContext(CartContext);
-  if (context === null) {
+  if (!context) {
     throw new Error("useCart must be used within a CartContextProvider");
   }
   return context;
