@@ -1,66 +1,82 @@
-// Import necessary modules and components
 "use client";
+
 import { useCart } from "@/hooks/useCart";
-import { Elements } from "@stripe/react-stripe-js";
-import { StripeElementsOptions, loadStripe } from "@stripe/stripe-js";
+import { Elements, StripeElementsOptions } from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import CheckoutForm from "./CheckoutForm";
 import Button from "../components/Button";
 
-// Load the Stripe API with the public key
 const stripePromise = loadStripe(
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY as string
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ""
 );
 
-// CheckoutClient component for handling the checkout process
 const CheckoutClient = () => {
-  // Destructure values from the cart context using useCart hook
   const { cartProducts, paymentIntent, handleSetPaymentIntent } = useCart();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
-  const [clientSecret, setClientSecret] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [clientSecret, setClientSecret] = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState(false);
-
   const router = useRouter();
-  console.log("paymentintent", paymentIntent);
-  console.log("clientsecret", clientSecret);
 
   useEffect(() => {
-    // Create payment intent as soon as the page loads
-    if (cartProducts) {
-      setLoading(true);
-      setError(false);
-
-      // Fetch data from the server to create a payment intent
-      fetch("/api/create-payment-intent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: cartProducts,
-          payment_intent_id: paymentIntent,
-        }),
-      })
-        .then((res) => {
-          setLoading(false);
-          if (res.status === 401) {
-            return router.push("/login");
-          }
-          return res.json();
-        })
-        .then((data) => {
-          setClientSecret(data.paymentIntent.client_secret);
-          handleSetPaymentIntent(data.paymentIntent.id);
-        })
-        .catch((error) => {
-          setError(true);
-          toast.error("Something went wrong in creating the payment intent");
-        });
+    if (!cartProducts?.length) {
+      setClientSecret("");
+      return;
     }
-  }, [cartProducts, handleSetPaymentIntent, paymentIntent, router]);
 
-  // Options for Stripe Elements
+    const controller = new AbortController();
+
+    const initializeCheckout = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch("/api/create-payment-intent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            items: cartProducts,
+            payment_intent_id: paymentIntent,
+          }),
+        });
+
+        if (response.status === 401) {
+          router.push("/login");
+          return;
+        }
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data?.error ?? "Unable to initialize checkout");
+        }
+        if (!data?.paymentIntent?.client_secret || !data?.paymentIntent?.id) {
+          throw new Error("The payment provider returned an invalid response");
+        }
+
+        setClientSecret(data.paymentIntent.client_secret);
+        handleSetPaymentIntent(data.paymentIntent.id);
+      } catch (checkoutError) {
+        if (controller.signal.aborted) return;
+        console.error("Checkout initialization failed:", checkoutError);
+        const message =
+          checkoutError instanceof Error
+            ? checkoutError.message
+            : "Something went wrong while preparing checkout";
+        setError(message);
+        toast.error(message);
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    };
+
+    initializeCheckout();
+    return () => controller.abort();
+  }, [cartProducts, paymentIntent, handleSetPaymentIntent, router]);
+
   const options: StripeElementsOptions = {
     clientSecret,
     appearance: {
@@ -69,33 +85,56 @@ const CheckoutClient = () => {
     },
   };
 
-  // Callback function to set payment success status
   const handleSetPaymentSuccess = useCallback((value: boolean) => {
     setPaymentSuccess(value);
   }, []);
 
   return (
     <div className="w-full">
-      {/* Render the checkout form within Stripe Elements */}
-      {clientSecret && cartProducts && (
+      {clientSecret && cartProducts?.length ? (
         <Elements options={options} stripe={stripePromise}>
           <CheckoutForm
             clientSecret={clientSecret}
             handleSetPaymentSuccess={handleSetPaymentSuccess}
           />
         </Elements>
+      ) : null}
+
+      {loading && (
+        <p role="status" className="py-8 text-center text-slate-500">
+          Preparing secure checkout...
+        </p>
       )}
-      {loading && <div className="text-center">Loading checkout...</div>}
+
       {error && (
-        <div className="text-center text-rose-500">Something went wrong...</div>
+        <div role="alert" className="space-y-3 rounded-lg bg-rose-50 p-4 text-center text-rose-700">
+          <p>{error}</p>
+          <Button
+            label="Try again"
+            onClick={() => {
+              setError(null);
+              setClientSecret("");
+              router.refresh();
+            }}
+          />
+        </div>
       )}
+
+      {!loading && !error && !cartProducts?.length && !paymentSuccess && (
+        <div className="space-y-4 py-10 text-center">
+          <p className="text-slate-600">Your cart is empty.</p>
+          <Button label="Continue shopping" onClick={() => router.push("/")} />
+        </div>
+      )}
+
       {paymentSuccess && (
-        <div className="flex items-center flex-col gap-4">
-          <div className="text-teal-500 text-center">Payment Success</div>
-          <div className="max-w-[220px] w-full">
-            {/* Button to view orders */}
+        <div className="flex flex-col items-center gap-4 py-8">
+          <p className="text-center font-semibold text-teal-600">
+            Payment successful. Thank you for your order!
+          </p>
+          <div className="w-full max-w-[240px]">
             <Button
-              label="View your Orders"
+              label="View your orders"
               onClick={() => router.push("/orders")}
             />
           </div>
@@ -105,5 +144,4 @@ const CheckoutClient = () => {
   );
 };
 
-// Export the CheckoutClient component
 export default CheckoutClient;
