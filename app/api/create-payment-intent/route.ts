@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     }
 
     // Never trust prices or product descriptions supplied by the browser.
-    const productIds = [...new Set(items.map((item) => item.id))];
+    const productIds = Array.from(new Set(items.map((item) => item.id)));
     const databaseProducts = await prisma.product.findMany({
       where: { id: { in: productIds } },
     });
