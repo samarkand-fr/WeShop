@@ -14,7 +14,7 @@ const stripePromise = loadStripe(
 );
 
 const CheckoutClient = () => {
-  const { cartProducts, paymentIntent, handleSetPaymentIntent } = useCart();
+  const { cartProducts, paymentIntent, handleSetPaymentIntent, handleClearCart } = useCart();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [clientSecret, setClientSecret] = useState("");
@@ -23,6 +23,64 @@ const CheckoutClient = () => {
   const router = useRouter();
 
   useEffect(() => {
+    const redirectedClientSecret = new URLSearchParams(
+      window.location.search
+    ).get("payment_intent_client_secret");
+    if (!redirectedClientSecret) return;
+
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    const verifyRedirectedPayment = async () => {
+      try {
+        const stripe = await stripePromise;
+        if (!stripe) throw new Error("Unable to connect to the payment provider");
+
+        const { paymentIntent: returnedIntent, error: stripeError } =
+          await stripe.retrievePaymentIntent(redirectedClientSecret);
+
+        if (cancelled) return;
+        if (stripeError) {
+          throw new Error(
+            stripeError.message ?? "Unable to verify your payment"
+          );
+        }
+
+        if (returnedIntent?.status === "succeeded") {
+          handleClearCart();
+          handleSetPaymentIntent(null);
+          setPaymentSuccess(true);
+          toast.success("Payment completed successfully");
+        } else if (returnedIntent?.status === "processing") {
+          toast("Your payment is still processing. Check your orders shortly.");
+        } else {
+          setError("The payment was not completed. Please try again.");
+        }
+      } catch (verificationError) {
+        if (cancelled) return;
+        const message =
+          verificationError instanceof Error
+            ? verificationError.message
+            : "Unable to verify your payment";
+        setError(message);
+        toast.error(message);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      }
+    };
+
+    verifyRedirectedPayment();
+    return () => {
+      cancelled = true;
+    };
+  }, [handleClearCart, handleSetPaymentIntent]);
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).has("payment_intent_client_secret")) return;
     if (!cartProducts?.length) {
       setClientSecret("");
       return;
