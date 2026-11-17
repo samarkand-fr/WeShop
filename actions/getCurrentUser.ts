@@ -7,25 +7,22 @@ export async function getSesssion() {
 }
 
 export default async function getCurrentUser() {
-  try {
-    const session = await getSesssion();
-    if (!session?.user?.email) return null;
+  // Do not swallow Next.js dynamic-rendering signals from getServerSession.
+  // A missing session is normal; infrastructure/database errors should remain visible.
+  const session = await getSesssion();
+  if (!session?.user?.email) return null;
 
-    const currentUser = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      include: { orders: true },
-    });
+  const currentUser = await prisma.user.findUnique({
+    where: { email: session.user.email },
+    include: { orders: true },
+  });
 
-    if (!currentUser) return null;
+  if (!currentUser) return null;
 
-    return {
-      ...currentUser,
-      createdAt: currentUser.createdAt.toISOString(),
-      updatedAt: currentUser.updatedAt.toISOString(),
-      emailVerified: currentUser.emailVerified?.toISOString() ?? null,
-    };
-  } catch (error) {
-    console.error("Unable to retrieve current user:", error);
-    return null;
-  }
+  return {
+    ...currentUser,
+    createdAt: currentUser.createdAt.toISOString(),
+    updatedAt: currentUser.updatedAt.toISOString(),
+    emailVerified: currentUser.emailVerified?.toISOString() ?? null,
+  };
 }
