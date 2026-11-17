@@ -1,0 +1,54 @@
+name: WeShop CI
+
+on:
+  push:
+    branches:
+      - main
+      - improve/storefront-and-core-fixes
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Install, lint, type-check and build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      # CI-only placeholders. No production credentials or database are used.
+      DATABASE_URL: mongodb://127.0.0.1:27017/weshop_ci
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: ci-only-not-a-production-secret
+      GOOGLE_CLIENT_ID: ci-placeholder.apps.googleusercontent.com
+      GOOGLE_CLIENT_SECRET: ci-placeholder
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_ci_placeholder
+      STRIPE_SECRET_KEY: sk_test_ci_placeholder
+      STRIPE_WEBHOOK_SECRET: whsec_ci_placeholder
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate Prisma schema
+        run: npx prisma validate
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Type-check TypeScript
+        run: npx tsc --noEmit
+
+      - name: Build Next.js application
+        run: npm run build

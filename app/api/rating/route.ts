@@ -1,48 +1,81 @@
 import getCurrentUser from "@/actions/getCurrentUser";
-import { Review } from "@prisma/client";
+import prisma from "@/libs/prismadb";
 import { NextResponse } from "next/server";
 
-// Handle the POST request to create a new review
 export async function POST(request: Request) {
-  // Get the current user
-  const currentUser = await getCurrentUser();
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  // Check if there is no current user, return an error response
-  if (!currentUser) return NextResponse.error();
+    const body = await request.json();
+    const productId = body?.productId;
+    const rating = Number(body?.rating);
+    const comment =
+      typeof body?.comment === "string" ? body.comment.trim() : "";
 
-  // Parse the JSON body from the request
-  const body = await request.json();
-  
-  // Destructure the required properties from the request body
-  const { comment, rating, product, userId } = body;
+    if (
+      typeof productId !== "string" ||
+      !Number.isInteger(rating) ||
+      rating < 1 ||
+      rating > 5 ||
+      !comment ||
+      comment.length > 1000
+    ) {
+      return NextResponse.json(
+        { error: "Please provide a product, a rating from 1 to 5 and a valid comment." },
+        { status: 400 }
+      );
+    }
 
-  // Check if the user has a delivered order for the specified product
-  const deliveredOrder = currentUser?.orders.some(
-    (order) =>
-      order.products.find((item) => item.id === product.id) &&
-      order.deliveryStatus === "delivered"
-  );
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true },
+    });
+    if (!product) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
 
-  // Check if the user has already reviewed the product or the order is not delivered
-  const userReview = product?.reviews.find((review: Review) => {
-    return review.userId === currentUser.id;
-  });
+    const hasDeliveredOrder = currentUser.orders.some((order) =>
+      order.products.some((item) => item.id === productId) &&
+      order.deliveryStatus === "delivered" &&
+      order.status === "complete"
+    );
 
-  if (userReview || !deliveredOrder) {
-    // If the user has already reviewed the product or the order is not delivered, return an error response
-    return NextResponse.error();
+    if (!hasDeliveredOrder) {
+      return NextResponse.json(
+        { error: "You can review a product after its delivery" },
+        { status: 403 }
+      );
+    }
+
+    const existingReview = await prisma.review.findFirst({
+      where: { productId, userId: currentUser.id },
+      select: { id: true },
+    });
+    if (existingReview) {
+      return NextResponse.json(
+        { error: "You have already reviewed this product" },
+        { status: 409 }
+      );
+    }
+
+    const review = await prisma.review.create({
+      data: {
+        comment,
+        rating,
+        productId,
+        userId: currentUser.id,
+      },
+    });
+
+    return NextResponse.json(review, { status: 201 });
+  } catch (error) {
+    console.error("Unable to submit product review:", error);
+    return NextResponse.json(
+      { error: "Unable to submit your review" },
+      { status: 500 }
+    );
   }
-
-  // Create a new review using Prisma
-  const review = await prisma?.review.create({
-    data: {
-      comment,
-      rating,
-      productId: product.id,
-      userId,
-    },
-  });
-
-  // Return a JSON response with the created review
-  return NextResponse.json(review);
 }

@@ -6,6 +6,10 @@ import Footer from './components/footer/Footer'
 import CartProvider from '@/providers/CartProvider'
 import { Toaster } from 'react-hot-toast'
 
+// The shared navigation reads the authenticated user from request headers.
+// Render this app per request instead of trying to statically prerender it.
+export const dynamic = 'force-dynamic'
+
 // use font poppins
 const poppins = Poppins({ subsets: ['latin'],weight:['400','700'] })
 
@@ -32,7 +36,6 @@ export default async function RootLayout({
        <CartProvider>
        <div className='flex flex-col min-h-screen'>
           <Navbar />
-          {/* using flex-grow to have all hauter to main and put footer at bottom */}
             <main className='flex-grow'>{children}</main>
             <Footer />
         </div>

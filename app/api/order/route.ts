@@ -1,32 +1,40 @@
-// Import necessary modules and dependencies
-import getCurrentUser from '@/actions/getCurrentUser';
-import prisma from '@/libs/prismadb';
-import { NextResponse } from 'next/server';
+import getCurrentUser from "@/actions/getCurrentUser";
+import prisma from "@/libs/prismadb";
+import { NextResponse } from "next/server";
 
-// Handle the PUT request for updating the deliveryStatus of an order
+const DELIVERY_STATUSES = ["pending", "dispatched", "delivered"] as const;
+
 export async function PUT(request: Request) {
-    // Get the current user using the getCurrentUser function
+  try {
     const currentUser = await getCurrentUser();
-
-    // Check if the user does not exist or is not an admin
-    if (!currentUser || currentUser.role !== 'ADMIN') {
-        return NextResponse.error();
+    if (!currentUser || currentUser.role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Parse the request body
     const body = await request.json();
-    const { id, deliveryStatus } = body;
+    const { id, deliveryStatus } = body ?? {};
 
-    // Update the deliveryStatus of the order in the database
+    if (
+      typeof id !== "string" ||
+      !DELIVERY_STATUSES.includes(deliveryStatus)
+    ) {
+      return NextResponse.json(
+        { error: "Invalid order ID or delivery status" },
+        { status: 400 }
+      );
+    }
+
     const order = await prisma.order.update({
-        where: {
-            id: id,
-        },
-        data: {
-            deliveryStatus,
-        },
+      where: { id },
+      data: { deliveryStatus },
     });
 
-    // Return the updated order as JSON response
     return NextResponse.json(order);
+  } catch (error) {
+    console.error("Unable to update delivery status:", error);
+    return NextResponse.json(
+      { error: "Unable to update order" },
+      { status: 500 }
+    );
+  }
 }

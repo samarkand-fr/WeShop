@@ -1,59 +1,63 @@
-// Importing necessary dependencies and utilities.
 "use client";
+
 import { formatPrice } from "@/utils/formatPrice";
 import { trancateText } from "@/utils/trancateText";
 import Image from "next/image";
 import { Rating } from "@mui/material";
 import { useRouter } from "next/navigation";
 
-// Interface defining the props for the ProductCard component.
 interface ProductCardProps {
-  data: any; // The product data to be displayed on the card.
+  data: any;
 }
 
-// ProductCard component represents a card displaying product information.
 const ProductCard: React.FC<ProductCardProps> = ({ data }) => {
-  // Router hook for navigation.
   const router = useRouter();
-
-  // Calculate product rating based on reviews.
-  const productRating =
-    data.reviews.reduce((acc: number, item: any) => item.rating + acc, 0) /
-    data.reviews.length;
+  const reviews = Array.isArray(data.reviews) ? data.reviews : [];
+  const productRating = reviews.length
+    ? reviews.reduce(
+        (total: number, review: any) => total + review.rating,
+        0
+      ) / reviews.length
+    : 0;
+  const productImage = data.images?.[0]?.image;
 
   return (
-    // Container for the ProductCard with click event for navigation and styling.
-    <div
+    <button
+      type="button"
       onClick={() => router.push(`/product/${data.id}`)}
-      className="col-span-1 cursor-pointer border-[1.2px]
-           border-slate-100 bg-slate-50 rounded-sm p-2 
-           transition hover:scale-105 text-center text-sm"
+      aria-label={`View ${data.name}`}
+      className="group flex h-full w-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm transition duration-200 hover:-translate-y-1 hover:border-slate-300 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
     >
-      {/* Container for the product information */}
-      <div>
-        <div className="flex flex-col w-full gap-1"></div>
-        {/* Container for the product image */}
-        <div className="aspect-square overflow-hidden relative w-full">
-          {/* Displaying the product image using Next.js Image component */}
+      <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-slate-50">
+        {productImage ? (
           <Image
-            src={data.images[0].image}
+            src={productImage}
             fill
-            className="w-full h-full object-contain"
-            alt="card-image"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+            className="object-contain p-3 transition duration-300 group-hover:scale-105"
+            alt={data.name}
           />
-        </div>
-        {/* Displaying the truncated product name */}
-        <div className="mt-4">{trancateText(data.name)}</div>
-        {/* Displaying the product rating */}
-        <div>
-          <Rating value={productRating} readOnly />
-        </div>
-        {/* Displaying the number of reviews */}
-        <div>{data.reviews.length} reviews</div>
-        {/* Displaying the formatted product price */}
-        <div className="font-semibold ">{formatPrice(data.price)}</div>
+        ) : (
+          <div className="flex h-full items-center justify-center text-xs text-slate-400">
+            Image unavailable
+          </div>
+        )}
       </div>
-    </div>
+      <div className="mt-3 flex flex-1 flex-col">
+        <p className="line-clamp-2 min-h-10 text-sm font-medium text-slate-800">
+          {trancateText(data.name)}
+        </p>
+        <div className="mt-2 flex items-center gap-2">
+          <Rating value={productRating} precision={0.5} readOnly size="small" />
+          <span className="text-xs text-slate-500">
+            {reviews.length ? `(${reviews.length})` : "No reviews yet"}
+          </span>
+        </div>
+        <p className="mt-3 text-base font-semibold text-slate-950">
+          {formatPrice(data.price)}
+        </p>
+      </div>
+    </button>
   );
 };
 

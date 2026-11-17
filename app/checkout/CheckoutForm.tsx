@@ -1,106 +1,106 @@
-// Import necessary modules and components
 "use client";
+
 import { useCart } from "@/hooks/useCart";
 import {
+  AddressElement,
   PaymentElement,
   useElements,
   useStripe,
-  AddressElement,
 } from "@stripe/react-stripe-js";
 import { useEffect, useState } from "react";
 import { formatPrice } from "../../utils/formatPrice";
 import toast from "react-hot-toast";
 import Heading from "../components/Heading";
-import Button from "../components/Button";
 
-// Define the props for the CheckoutForm component
 interface CheckoutFormProps {
   clientSecret: string;
   handleSetPaymentSuccess: (value: boolean) => void;
 }
 
-// CheckoutForm component for handling the payment form
 const CheckoutForm: React.FC<CheckoutFormProps> = ({
   clientSecret,
   handleSetPaymentSuccess,
 }) => {
-  // Destructure values from the cart context using useCart hook
   const { cartTotalAmount, handleClearCart, handleSetPaymentIntent } = useCart();
   const stripe = useStripe();
   const elements = useElements();
   const [isLoading, setIsLoading] = useState(false);
-  const formattedPrice = formatPrice(cartTotalAmount);
 
   useEffect(() => {
-    // Check if Stripe and client secret are available
-    if (!stripe) {
-      return;
-    }
-    if (!clientSecret) {
-      return;
-    }
-    // Set payment success to false when the component mounts
-    handleSetPaymentSuccess(false);
+    if (stripe && clientSecret) handleSetPaymentSuccess(false);
   }, [stripe, clientSecret, handleSetPaymentSuccess]);
 
-  // Handle the form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    // Check if Stripe and Elements are available
-    if (!stripe || !elements) {
-      return;
-    }
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!stripe || !elements || isLoading) return;
+
     setIsLoading(true);
-    // Confirm the payment using Stripe
-    stripe
-      .confirmPayment({
+    try {
+      const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/checkout`,
+        },
         redirect: "if_required",
-      })
-      .then((result) => {
-        // If the payment is successful, show success message and clear the cart
-        if (!result.error) {
-          toast.success("Checkout succeeded");
-          handleClearCart();
-          handleSetPaymentSuccess(true);
-          handleSetPaymentIntent(null);
-        }
-        setIsLoading(false);
       });
+
+      if (error) {
+        toast.error(error.message ?? "Your payment could not be completed");
+        return;
+      }
+
+      if (paymentIntent?.status === "succeeded") {
+        toast.success("Payment completed successfully");
+        handleClearCart();
+        handleSetPaymentIntent(null);
+        handleSetPaymentSuccess(true);
+      } else if (paymentIntent?.status === "processing") {
+        toast("Your payment is processing. You can check your orders shortly.");
+      } else {
+        toast.error("Payment has not been completed. Please try again.");
+      }
+    } catch (error) {
+      console.error("Payment confirmation failed:", error);
+      toast.error("An unexpected error occurred while processing payment");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    // Payment form JSX
-    <form onSubmit={handleSubmit} id="payment-form">
+    <form onSubmit={handleSubmit} id="payment-form" className="space-y-5">
       <div className="mb-6">
-        {/* Heading for the payment form */}
         <Heading title="Enter your payment details to complete checkout" />
       </div>
-      <h2 className="font-semibold mt-4 mb-2"> Address Information</h2>
-      {/* AddressElement for collecting shipping address information */}
-      <AddressElement
-        options={{
-          mode: "shipping",
-          allowedCountries: ["US", "FR"],
-        }}
-      />
-      <h2 className="font-semibold mt-4 mb-2"> Payment Information</h2>
-      {/* PaymentElement for collecting payment information */}
-      <PaymentElement id="payment-element" options={{ layout: "tabs" }} />
 
-      <div className="py-4 text-center text-slate-700 text-4xl font-bold">
-        {/* Display the total amount */}
-        Total : {formattedPrice}
+      <section>
+        <h2 className="mb-2 mt-4 font-semibold">Shipping address</h2>
+        <AddressElement
+          options={{
+            mode: "shipping",
+            allowedCountries: ["US", "FR"],
+          }}
+        />
+      </section>
+
+      <section>
+        <h2 className="mb-2 mt-4 font-semibold">Payment information</h2>
+        <PaymentElement id="payment-element" options={{ layout: "tabs" }} />
+      </section>
+
+      <div className="py-4 text-center text-2xl font-bold text-slate-800 sm:text-4xl">
+        Total: {formatPrice(cartTotalAmount)}
       </div>
-      {/* Button for submitting the form */}
-      <Button
-        label={isLoading ? "Processing" : "Pay Now"}
+
+      <button
+        type="submit"
         disabled={isLoading || !stripe || !elements}
-        onClick={() => {}}
-      />
+        className="w-full rounded-lg bg-slate-900 px-5 py-3 font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {isLoading ? "Processing payment..." : "Pay now"}
+      </button>
     </form>
   );
 };
 
-// Export the CheckoutForm component
 export default CheckoutForm;

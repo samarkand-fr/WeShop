@@ -1,68 +1,50 @@
-// Importing necessary dependencies.
 "use client";
+
 import { useRouter } from "next/navigation";
 import queryString from "query-string";
 import { FieldValues, SubmitHandler, useForm } from "react-hook-form";
 
-// SearchBar component allows users to search for products.
 const SearchBar = () => {
-  // Router hook for navigation.
   const router = useRouter();
-
-  // Form handling with react-hook-form.
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<FieldValues>({
-    defaultValues: {
-      searchTerm: "",
-    },
+  const { register, handleSubmit, reset } = useForm<FieldValues>({
+    defaultValues: { searchTerm: "" },
   });
 
-  // Callback function for form submission.
-  const onSubmit: SubmitHandler<FieldValues> = async (data) => {
-    // If the search term is empty, navigate to the home page.
-    if (!data.searchTerm) return router.push("/");
+  const onSubmit: SubmitHandler<FieldValues> = (data) => {
+    const searchTerm = String(data.searchTerm ?? "").trim();
+    if (!searchTerm) {
+      router.push("/");
+      return;
+    }
 
-    // Constructing the URL with the search term using query-string.
     const url = queryString.stringifyUrl(
-      {
-        url: "/",
-        query: {
-          searchTerm: data.searchTerm,
-        },
-      },
-      {
-        skipNull: true,
-      }
+      { url: "/", query: { searchTerm } },
+      { skipNull: true }
     );
-
-    // Navigating to the constructed URL and resetting the form.
     router.push(url);
     reset();
   };
 
-  // Rendering the search input and button.
   return (
-    <div className="flex items-center">
-      {/* Search input field */}
+    <form onSubmit={handleSubmit(onSubmit)} role="search" className="flex items-center">
+      <label htmlFor="product-search" className="sr-only">
+        Search products
+      </label>
       <input
+        id="product-search"
         {...register("searchTerm")}
         autoComplete="off"
-        type="text"
+        type="search"
         placeholder="Search products..."
-        className="p-2 border border-slate-300 rounded-l-md focus:outline-none focus:border-[0.5px] focus:border-slate-500 w-60 md:w-80"
+        className="w-40 rounded-l-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 sm:w-60 md:w-72"
       />
-      {/* Search button */}
       <button
-        onClick={handleSubmit(onSubmit)}
-        className="bg-slate-600 hover:opacity-80 text-white p-2 rounded-r-md hover:bg-pink-600 transition"
+        type="submit"
+        className="rounded-r-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2"
       >
         Search
       </button>
-    </div>
+    </form>
   );
 };
 
