@@ -19,6 +19,7 @@ const CheckoutClient = () => {
   const [error, setError] = useState<string | null>(null);
   const [clientSecret, setClientSecret] = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
@@ -75,7 +76,7 @@ const CheckoutClient = () => {
 
     initializeCheckout();
     return () => controller.abort();
-  }, [cartProducts, paymentIntent, handleSetPaymentIntent, router]);
+  }, [cartProducts, paymentIntent, handleSetPaymentIntent, router, retryKey]);
 
   const options: StripeElementsOptions = {
     clientSecret,
@@ -114,7 +115,7 @@ const CheckoutClient = () => {
             onClick={() => {
               setError(null);
               setClientSecret("");
-              router.refresh();
+              setRetryKey((value) => value + 1);
             }}
           />
         </div>
