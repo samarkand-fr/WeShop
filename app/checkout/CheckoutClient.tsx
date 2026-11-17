@@ -19,6 +19,7 @@ const CheckoutClient = () => {
   const [error, setError] = useState<string | null>(null);
   const [clientSecret, setClientSecret] = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
   const router = useRouter();
 
@@ -53,6 +54,7 @@ const CheckoutClient = () => {
           setPaymentSuccess(true);
           toast.success("Payment completed successfully");
         } else if (returnedIntent?.status === "processing") {
+          setPaymentProcessing(true);
           toast("Your payment is still processing. Check your orders shortly.");
         } else {
           setError("The payment was not completed. Please try again.");
@@ -183,6 +185,17 @@ const CheckoutClient = () => {
         <div className="space-y-4 py-10 text-center">
           <p className="text-slate-600">Your cart is empty.</p>
           <Button label="Continue shopping" onClick={() => router.push("/")} />
+        </div>
+      )}
+
+      {paymentProcessing && !paymentSuccess && (
+        <div className="flex flex-col items-center gap-4 py-8">
+          <p className="text-center font-semibold text-amber-600">
+            Your payment is processing. You can check your order status shortly.
+          </p>
+          <div className="w-full max-w-[240px]">
+            <Button label="View your orders" onClick={() => router.push("/orders")} />
+          </div>
         </div>
       )}
 
