@@ -1,5 +1,5 @@
-"use client"
-// Import necessary modules and components
+"use client";
+
 import Button from "@/app/components/Button";
 import Heading from "@/app/components/Heading";
 import Input from "@/app/components/inputs/Input";
@@ -12,27 +12,14 @@ import { useState } from "react";
 import { FieldValues, SubmitHandler, useForm } from "react-hook-form";
 import toast from "react-hot-toast";
 
-// Define the AddRating component
 interface AddRatingProps {
-  product: Product & {
-    reviews: Review[];
-  };
-  user:
-    | (SafeUser & {
-        orders: Order[];
-      })
-    | null
-    | undefined;
+  product: Product & { reviews: Review[] };
+  user: (SafeUser & { orders: Order[] }) | null | undefined;
 }
 
 const AddRating: React.FC<AddRatingProps> = ({ product, user }) => {
-  // State to manage loading status
   const [isLoading, setIsLoading] = useState(false);
-
-  // Next.js router instance
   const router = useRouter();
-
-  // React Hook Form instance
   const {
     register,
     handleSubmit,
@@ -40,76 +27,66 @@ const AddRating: React.FC<AddRatingProps> = ({ product, user }) => {
     reset,
     formState: { errors },
   } = useForm<FieldValues>({
-    defaultValues: {
-      comment: "",
-      rating: 0,
-    },
+    defaultValues: { comment: "", rating: 0 },
   });
 
-  // Helper function to set custom value in React Hook Form
-  const setCustomValue = (id: string, value: any) => {
-    setValue(id, value, {
-      shouldTouch: true,
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-  };
-
-  // Submit handler for the form
   const onSubmit: SubmitHandler<FieldValues> = async (data) => {
-    setIsLoading(true);
+    const rating = Number(data.rating);
+    const comment = String(data.comment ?? "").trim();
 
-    // Save the data in the database
-    if (data.rating === 0) {
-      setIsLoading(false);
-      return toast.error("No Rating selected");
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      toast.error("Please select a rating from 1 to 5");
+      return;
+    }
+    if (!comment) {
+      toast.error("Please write a comment");
+      return;
     }
 
-    const ratingData = {
-      ...data,
-      userId: user?.id,
-      product: product,
-    };
-
-    axios
-      .post("/api/rating", ratingData)
-      .then(() => {
-        toast.success("Rating submitted");
-        router.refresh();
-        reset();
-      })
-      .catch((error: any) => {
-        toast.error("Something went wrong");
-      })
-      .finally(() => {
-        setIsLoading(false);
+    setIsLoading(true);
+    try {
+      await axios.post("/api/rating", {
+        productId: product.id,
+        rating,
+        comment,
       });
+      toast.success("Review submitted");
+      router.refresh();
+      reset();
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.error ?? "Unable to submit your review"
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // Check if user and product exist, otherwise return null
   if (!user || !product) return null;
 
-  // Check if the order has been delivered and if the user has already reviewed the product
-  const deliveredOrder = user?.orders.some(
+  const deliveredOrder = user.orders.some(
     (order) =>
-      order.products.find((item) => item.id === product.id) &&
-      order.deliveryStatus === "delivered"
+      order.products.some((item) => item.id === product.id) &&
+      order.deliveryStatus === "delivered" &&
+      order.status === "complete"
   );
-  const userReview = product?.reviews.find((review: Review) => {
-    return review.userId === user.id;
-  });
+  const userReview = product.reviews.some(
+    (review) => review.userId === user.id
+  );
 
-  // If the user has already reviewed the product or the order is not delivered, return null
   if (userReview || !deliveredOrder) return null;
 
-  // Render the AddRating component
   return (
-    <div className="flex flex-col gap-2 max-w-[500px]">
+    <div className="flex max-w-[500px] flex-col gap-2">
       <Heading title="Rate this product" />
       <Rating
-        onChange={(event, newValue) => {
-          setCustomValue("rating", newValue);
-        }}
+        onChange={(_, newValue) =>
+          setValue("rating", newValue ?? 0, {
+            shouldTouch: true,
+            shouldDirty: true,
+            shouldValidate: true,
+          })
+        }
       />
       <Input
         id="comment"
@@ -120,12 +97,12 @@ const AddRating: React.FC<AddRatingProps> = ({ product, user }) => {
         required
       />
       <Button
-        label={isLoading ? "Loading" : "Rate Product"}
+        label={isLoading ? "Submitting..." : "Rate Product"}
+        disabled={isLoading}
         onClick={handleSubmit(onSubmit)}
       />
     </div>
   );
 };
 
-// Export the AddRating component
 export default AddRating;
